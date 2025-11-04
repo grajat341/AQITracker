@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import random
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -14,7 +15,15 @@ from ..utils.aqi import advice_for_category, calculate_aqi, category_for_aqi, po
 DATA_DIR = Path(__file__).resolve().parents[1] / 'data'
 CITIES_PATH = DATA_DIR / 'cities.json'
 FALLBACK_PATH = DATA_DIR / 'fallback_data.json'
-OPENAQ_ENDPOINT = 'https://api.openaq.org/v2/latest'
+OPENAQ_ENDPOINT = 'https://api.openaq.org/v3/latest'
+OPENAQ_HEADERS = {
+    'Accept': 'application/json',
+    'User-Agent': 'AQITracker/1.0 (+https://github.com/your-org/AQITracker)',
+}
+
+API_KEY = os.getenv('OPENAQ_API_KEY')
+if API_KEY:
+    OPENAQ_HEADERS['X-API-Key'] = API_KEY
 
 with CITIES_PATH.open('r', encoding='utf-8') as file:
     CITY_CACHE: List[City] = [City(**city) for city in json.load(file)]
@@ -111,15 +120,15 @@ def _build_trend(current_aqi: int) -> List[TrendPoint]:
 
 
 def _parse_openaq_response(payload: dict) -> Optional[AQIInsight]:
-    results = payload.get('results', [])
+    results = payload.get('results') or payload.get('data') or []
     if not results:
         return None
 
     entry = results[0]
-    city = entry.get('city')
+    city = entry.get('city') or entry.get('location')
     country = entry.get('country')
     coordinates_data = entry.get('coordinates')
-    measurements = entry.get('measurements', [])
+    measurements = entry.get('measurements') or entry.get('parameters') or []
     if not city or not measurements:
         return None
 
@@ -138,7 +147,11 @@ def _parse_openaq_response(payload: dict) -> Optional[AQIInsight]:
         normalized_value = _convert_unit(code, raw_value, unit)
         aqi_value = calculate_aqi(code, normalized_value)
 
-        last_updated = measurement.get('lastUpdated')
+        last_updated = (
+            measurement.get('lastUpdated')
+            or measurement.get('last_updated')
+            or measurement.get('datetime')
+        )
         if last_updated:
             try:
                 latest_timestamp = datetime.fromisoformat(last_updated.replace('Z', '+00:00'))
@@ -204,7 +217,7 @@ async def get_aqi_for_city(city: str) -> AQIInsight:
             }
         )
 
-    async with httpx.AsyncClient(timeout=6.0) as client:
+    async with httpx.AsyncClient(timeout=6.0, headers=OPENAQ_HEADERS) as client:
         for params in queries:
             try:
                 response = await client.get(OPENAQ_ENDPOINT, params=params)

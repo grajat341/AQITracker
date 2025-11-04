@@ -70,9 +70,10 @@ proxies OpenAQ data sources and a polished React (Vite) frontend styled with Tai
 
 - Environment variable `VITE_API_BASE_URL` can be defined when building the frontend to point to a deployed API
   instance. In local development the Vite dev server proxies `/api` routes automatically.
-- The backend depends on the public [OpenAQ API](https://docs.openaq.org/). Ensure outbound HTTPS access is
-  allowed in your hosting environment. If the API is unreachable, AQITracker returns curated fallback insights
-  so the user interface remains functional.
+- The backend depends on the public [OpenAQ API](https://docs.openaq.org/) (Version 3). Ensure outbound HTTPS
+  access is allowed in your hosting environment. If OpenAQ requires an API key for your usage tier, expose it
+  to the backend as `OPENAQ_API_KEY`. When the service is unreachable or returns no data, AQITracker falls back
+  to curated placeholder insights so the user interface remains functional.
 - Both backend and frontend are framework-agnostic and can be containerised. For example, deploy FastAPI via
   Uvicorn/Gunicorn and serve the `frontend/dist` folder via any static host (e.g., Netlify, Cloudflare Pages,
   or an Nginx container).
