@@ -112,12 +112,12 @@
         }
 
         .aqi-good {
-            color: #0f0;
+            color: #28a745;
             background: #d4edda;
         }
 
         .aqi-moderate {
-            color: #ffeb3b;
+            color: #ffc107;
             background: #fff3cd;
         }
 
@@ -253,7 +253,19 @@
     </div>
 
     <script>
+        // AQI thresholds and color configuration
+        const AQI_THRESHOLDS = [
+            { max: 50, category: "Good", class: "aqi-good", color: "#00e400" },
+            { max: 100, category: "Moderate", class: "aqi-moderate", color: "#ffff00" },
+            { max: 150, category: "Unhealthy for Sensitive Groups", class: "aqi-unhealthy-sensitive", color: "#ff7e00" },
+            { max: 200, category: "Unhealthy", class: "aqi-unhealthy", color: "#ff0000" },
+            { max: 300, category: "Very Unhealthy", class: "aqi-very-unhealthy", color: "#8f3f97" },
+            { max: Infinity, category: "Hazardous", class: "aqi-hazardous", color: "#7e0023" }
+        ];
+
         // Sample AQI data for major cities around the world
+        // Note: This is demonstration data. In a production environment, this would be 
+        // replaced with real-time data from an AQI API service.
         const citiesData = [
             // North America
             { name: "New York", country: "USA", aqi: 45 },
@@ -303,22 +315,22 @@
             { name: "Auckland", country: "New Zealand", aqi: 28 }
         ];
 
+        function getAQIInfo(aqi) {
+            const threshold = AQI_THRESHOLDS.find(t => aqi <= t.max);
+            return {
+                category: threshold.category,
+                class: threshold.class,
+                color: threshold.color
+            };
+        }
+
         function getAQICategory(aqi) {
-            if (aqi <= 50) return { category: "Good", class: "aqi-good" };
-            if (aqi <= 100) return { category: "Moderate", class: "aqi-moderate" };
-            if (aqi <= 150) return { category: "Unhealthy for Sensitive Groups", class: "aqi-unhealthy-sensitive" };
-            if (aqi <= 200) return { category: "Unhealthy", class: "aqi-unhealthy" };
-            if (aqi <= 300) return { category: "Very Unhealthy", class: "aqi-very-unhealthy" };
-            return { category: "Hazardous", class: "aqi-hazardous" };
+            const info = getAQIInfo(aqi);
+            return { category: info.category, class: info.class };
         }
 
         function getAQIColor(aqi) {
-            if (aqi <= 50) return "#00e400";
-            if (aqi <= 100) return "#ffff00";
-            if (aqi <= 150) return "#ff7e00";
-            if (aqi <= 200) return "#ff0000";
-            if (aqi <= 300) return "#8f3f97";
-            return "#7e0023";
+            return getAQIInfo(aqi).color;
         }
 
         function createCityCard(city) {
