@@ -39,7 +39,24 @@ proxies OpenAQ data sources and a polished React (Vite) frontend styled with Tai
    npm install
    ```
 
-2. **Run the development servers**
+2. **Configure your OpenAQ API key**
+
+   OpenAQ v3 requires authentication. Create a free account and generate an API key from the
+   [OpenAQ dashboard](https://docs.openaq.org/docs/getting-started). The backend reads this value from the
+   `OPENAQ_API_KEY` environment variable. For local development you can drop the key into a `.env` file:
+
+   ```bash
+   cp .env.example .env
+   echo "OPENAQ_API_KEY=your-key-here" >> .env
+   ```
+
+   Alternatively, export the variable in your shell before starting Uvicorn:
+
+   ```bash
+   export OPENAQ_API_KEY=your-key-here
+   ```
+
+3. **Run the development servers**
 
    ```bash
    # Start backend on http://localhost:8000
@@ -54,7 +71,7 @@ proxies OpenAQ data sources and a polished React (Vite) frontend styled with Tai
    The React app will be served from [http://localhost:5173](http://localhost:5173) and automatically proxy API
    requests to the FastAPI service.
 
-3. **Build for production**
+4. **Build for production**
 
    ```bash
    # Frontend static build
@@ -71,9 +88,9 @@ proxies OpenAQ data sources and a polished React (Vite) frontend styled with Tai
 - Environment variable `VITE_API_BASE_URL` can be defined when building the frontend to point to a deployed API
   instance. In local development the Vite dev server proxies `/api` routes automatically.
 - The backend depends on the public [OpenAQ API](https://docs.openaq.org/) (Version 3). Ensure outbound HTTPS
-  access is allowed in your hosting environment. If OpenAQ requires an API key for your usage tier, expose it
-  to the backend as `OPENAQ_API_KEY`. When the service is unreachable or returns no data, AQITracker falls back
-  to curated placeholder insights so the user interface remains functional.
+  access is allowed in your hosting environment. Provide the required API key via the `OPENAQ_API_KEY`
+  environment variable or a `.env` file in the project root. When the service is unreachable or returns no
+  data, AQITracker falls back to curated placeholder insights so the user interface remains functional.
 - Both backend and frontend are framework-agnostic and can be containerised. For example, deploy FastAPI via
   Uvicorn/Gunicorn and serve the `frontend/dist` folder via any static host (e.g., Netlify, Cloudflare Pages,
   or an Nginx container).

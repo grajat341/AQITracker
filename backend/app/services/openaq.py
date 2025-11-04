@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import os
 import random
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -9,6 +8,7 @@ from typing import Dict, List, Optional
 
 import httpx
 
+from ..config import get_openaq_api_key
 from ..schemas import AQIInsight, City, Coordinates, PollutantReading, TrendPoint
 from ..utils.aqi import advice_for_category, calculate_aqi, category_for_aqi, pollutant_name
 
@@ -17,14 +17,17 @@ CITIES_PATH = DATA_DIR / 'cities.json'
 FALLBACK_PATH = DATA_DIR / 'fallback_data.json'
 OPENAQ_LATEST_ENDPOINT = 'https://api.openaq.org/v3/latest'
 OPENAQ_LOCATIONS_ENDPOINT = 'https://api.openaq.org/v3/locations'
-OPENAQ_HEADERS = {
-    'Accept': 'application/json',
-    'User-Agent': 'AQITracker/1.0 (+https://github.com/your-org/AQITracker)',
-}
+def _build_headers() -> dict[str, str]:
+    headers: dict[str, str] = {
+        'Accept': 'application/json',
+        'User-Agent': 'AQITracker/1.0 (+https://github.com/your-org/AQITracker)',
+    }
 
-API_KEY = os.getenv('OPENAQ_API_KEY')
-if API_KEY:
-    OPENAQ_HEADERS['X-API-Key'] = API_KEY
+    api_key = get_openaq_api_key()
+    if api_key:
+        headers['X-API-Key'] = api_key
+
+    return headers
 
 with CITIES_PATH.open('r', encoding='utf-8') as file:
     CITY_CACHE: List[City] = [City(**city) for city in json.load(file)]
@@ -44,7 +47,7 @@ def list_cities() -> List[City]:
     return CITY_CACHE
 
 
-def _load_fallback(city: str) -> AQIInsight:
+def _load_fallback(city: str, reason: Optional[str] = None) -> AQIInsight:
     normalized = city.lower()
     fallback = next((data for name, data in FALLBACK_DATA.items() if name.lower() == normalized), None)
     city_meta = next((entry for entry in CITY_CACHE if entry.city.lower() == normalized), None)
@@ -63,11 +66,8 @@ def _load_fallback(city: str) -> AQIInsight:
             'longitude': city_meta.longitude,
         }
 
-    message = (
-        fallback.get('message')
-        if fallback and fallback.get('message')
-        else 'Live air quality data is temporarily unavailable for this location. Please try again later.'
-    )
+    default_message = 'Live air quality data is temporarily unavailable for this location. Please try again later.'
+    message = reason or (fallback.get('message') if fallback and fallback.get('message') else default_message)
 
     city_name = (
         fallback.get('city')
@@ -200,7 +200,17 @@ async def get_aqi_for_city(city: str) -> AQIInsight:
     normalized = city.lower()
     city_meta = next((entry for entry in CITY_CACHE if entry.city.lower() == normalized), None)
 
-    async with httpx.AsyncClient(timeout=6.0, headers=OPENAQ_HEADERS) as client:
+    headers = _build_headers()
+    if 'X-API-Key' not in headers:
+        return _load_fallback(
+            city,
+            reason=(
+                'Live OpenAQ data requires an API key. Set the OPENAQ_API_KEY environment variable '
+                'for the backend service to fetch current readings.'
+            ),
+        )
+
+    async with httpx.AsyncClient(timeout=6.0, headers=headers) as client:
         location_ids: List[int | str] = []
 
         # Prefer explicit locations so we can query the latest endpoint with stable identifiers.
