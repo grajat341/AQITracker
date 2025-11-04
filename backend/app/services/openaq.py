@@ -183,16 +183,38 @@ def _parse_openaq_response(payload: dict) -> Optional[AQIInsight]:
 
 
 async def get_aqi_for_city(city: str) -> AQIInsight:
-    params = {'city': city, 'limit': 1, 'sort': 'desc', 'order_by': 'measurements.lastUpdated'}
+    normalized = city.lower()
+    city_meta = next((entry for entry in CITY_CACHE if entry.city.lower() == normalized), None)
+
+    queries = [
+        {
+            'city': city,
+            'limit': 1,
+            'sort': 'desc',
+        }
+    ]
+
+    if city_meta:
+        queries.append(
+            {
+                'coordinates': f"{city_meta.latitude},{city_meta.longitude}",
+                'radius': 50000,
+                'limit': 1,
+                'sort': 'desc',
+            }
+        )
+
     async with httpx.AsyncClient(timeout=6.0) as client:
-        try:
-            response = await client.get(OPENAQ_ENDPOINT, params=params)
-            response.raise_for_status()
-            payload = response.json()
+        for params in queries:
+            try:
+                response = await client.get(OPENAQ_ENDPOINT, params=params)
+                response.raise_for_status()
+                payload = response.json()
+            except (httpx.HTTPError, ValueError):
+                continue
+
             parsed = _parse_openaq_response(payload)
             if parsed:
                 return parsed
-        except (httpx.HTTPError, ValueError):
-            pass
 
     return _load_fallback(city)
