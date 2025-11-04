@@ -1,0 +1,23 @@
+{
+  "Delhi": {
+    "city": "Delhi",
+    "country": "India",
+    "timestamp": "2024-01-18T08:00:00Z",
+    "coordinates": { "latitude": 28.6139, "longitude": 77.209 },
+    "message": "Live air quality readings for Delhi are temporarily unavailable. Data will refresh once the provider responds again."
+  },
+  "Mumbai": {
+    "city": "Mumbai",
+    "country": "India",
+    "timestamp": "2024-01-18T08:00:00Z",
+    "coordinates": { "latitude": 19.076, "longitude": 72.8777 },
+    "message": "Live air quality readings for Mumbai are temporarily unavailable. Please check back soon."
+  },
+  "New York": {
+    "city": "New York",
+    "country": "United States",
+    "timestamp": "2024-01-18T08:00:00Z",
+    "coordinates": { "latitude": 40.7128, "longitude": -74.006 },
+    "message": "Live air quality readings for New York are temporarily unavailable."
+  }
+}

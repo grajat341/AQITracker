@@ -1,0 +1,67 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  @apply font-sans bg-slate-950 text-slate-50 antialiased;
+}
+
+.bg-gradient-radial {
+  background-image: radial-gradient(circle at top, rgba(79, 70, 229, 0.6), transparent 55%);
+}
+
+.glass-panel {
+  @apply bg-slate-900/70 backdrop-blur-xl border border-slate-800/80 shadow-2xl shadow-slate-950/40;
+}
+
+.glow-ring {
+  position: relative;
+}
+
+.glow-ring::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(120deg, rgba(79, 70, 229, 0.5), transparent, rgba(14, 165, 233, 0.4));
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+.pulse-dot {
+  @apply relative flex h-3 w-3;
+}
+
+.pulse-dot span {
+  @apply absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75;
+  animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+.pulse-dot span:last-child {
+  @apply relative h-3 w-3 rounded-full bg-emerald-400;
+  animation: none;
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
+  transform: translateX(-100%);
+  animation: shimmer 2s infinite;
+}
