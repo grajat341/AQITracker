@@ -15,7 +15,8 @@ from ..utils.aqi import advice_for_category, calculate_aqi, category_for_aqi, po
 DATA_DIR = Path(__file__).resolve().parents[1] / 'data'
 CITIES_PATH = DATA_DIR / 'cities.json'
 FALLBACK_PATH = DATA_DIR / 'fallback_data.json'
-OPENAQ_ENDPOINT = 'https://api.openaq.org/v3/latest'
+OPENAQ_LATEST_ENDPOINT = 'https://api.openaq.org/v3/latest'
+OPENAQ_LOCATIONS_ENDPOINT = 'https://api.openaq.org/v3/locations'
 OPENAQ_HEADERS = {
     'Accept': 'application/json',
     'User-Agent': 'AQITracker/1.0 (+https://github.com/your-org/AQITracker)',
@@ -199,28 +200,58 @@ async def get_aqi_for_city(city: str) -> AQIInsight:
     normalized = city.lower()
     city_meta = next((entry for entry in CITY_CACHE if entry.city.lower() == normalized), None)
 
-    queries = [
-        {
-            'city': city,
-            'limit': 1,
-            'sort': 'desc',
-        }
-    ]
-
-    if city_meta:
-        queries.append(
-            {
-                'coordinates': f"{city_meta.latitude},{city_meta.longitude}",
-                'radius': 50000,
-                'limit': 1,
-                'sort': 'desc',
-            }
-        )
-
     async with httpx.AsyncClient(timeout=6.0, headers=OPENAQ_HEADERS) as client:
-        for params in queries:
+        location_ids: List[int | str] = []
+
+        # Prefer explicit locations so we can query the latest endpoint with stable identifiers.
+        location_queries = []
+        if city_meta:
+            location_queries.append(
+                {
+                    'coordinates': f"{city_meta.latitude},{city_meta.longitude}",
+                    'radius': 50000,
+                    'limit': 5,
+                    'order_by': 'distance',
+                    'sort': 'asc',
+                }
+            )
+
+        location_queries.append({'city': city, 'limit': 5})
+
+        seen_locations = set()
+        for params in location_queries:
             try:
-                response = await client.get(OPENAQ_ENDPOINT, params=params)
+                response = await client.get(OPENAQ_LOCATIONS_ENDPOINT, params=params)
+                response.raise_for_status()
+                payload = response.json()
+            except (httpx.HTTPError, ValueError):
+                continue
+
+            results = payload.get('results') or payload.get('data') or []
+            for entry in results:
+                location_id = (
+                    entry.get('id')
+                    or entry.get('locationId')
+                    or entry.get('location_id')
+                )
+                if location_id is None or location_id in seen_locations:
+                    continue
+                seen_locations.add(location_id)
+                location_ids.append(location_id)
+
+        # Fall back to a city-level query if no specific locations were returned.
+        if not location_ids:
+            location_ids.append(city)
+
+        for identifier in location_ids:
+            params: Dict[str, str] = {'limit': 1}
+            if isinstance(identifier, int):
+                params['location_id'] = str(identifier)
+            else:
+                params['city'] = identifier
+
+            try:
+                response = await client.get(OPENAQ_LATEST_ENDPOINT, params=params)
                 response.raise_for_status()
                 payload = response.json()
             except (httpx.HTTPError, ValueError):
